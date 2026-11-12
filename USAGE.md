@@ -1,143 +1,154 @@
-# Port Scanner Usage Help
+# Port Scanner Detailed Usage Guide
 
-## Basic command
+## Basic Command Syntax
 
-```text
-python portscan.py HOST [OPTIONS]
+```bash
+python portscan.py [HOSTS...] [OPTIONS]
 ```
 
-Replace `HOST` with a hostname or IP address. For example:
+Or when installed with `pip install .`:
 
-```text
+```bash
+portscan [HOSTS...] [OPTIONS]
+```
+
+---
+
+## Specifying Targets
+
+You can pass single hosts, hostnames, CIDR network blocks, IP ranges, or a file list:
+
+### 1. Hostnames and Single IPs
+```bash
 python portscan.py 127.0.0.1
-python portscan.py example.com
+python portscan.py scanme.nmap.org
+python portscan.py 192.168.1.1 192.168.1.254
 ```
 
-On Linux, use `python3` if `python` starts a different program:
-
+### 2. CIDR Subnets
+Scan all hosts in a subnet (e.g. `/24` or `/28`):
 ```bash
-python3 portscan.py 127.0.0.1
+python portscan.py 192.168.1.0/24 -p 22,80,443
 ```
 
-On Windows, the `py` launcher can also be used:
-
-```powershell
-py .\portscan.py 127.0.0.1
-```
-
-## Display built-in help
-
-Linux:
-
+### 3. IP Ranges
+Scan a continuous range of IP addresses:
 ```bash
-python3 portscan.py --help
+python portscan.py 10.0.0.1-10.0.0.50 -p 80,443
+# Or using suffix notation:
+python portscan.py 192.168.1.10-50 -p 22,80
 ```
 
-Windows CMD:
-
-```bat
-python portscan.py --help
-```
-
-Windows PowerShell:
-
-```powershell
-python .\portscan.py --help
-```
-
-## Options
-
-### `-p`, `--ports`
-
-Choose which TCP ports to scan. Use commas for separate ports and a hyphen
-for a range.
-
-```bash
-python3 portscan.py 192.168.1.1 --ports 22,80,443
-python3 portscan.py 192.168.1.1 --ports 1-1024
-python3 portscan.py 192.168.1.1 --ports 22,80,8000-8010
-```
-
-If this option is omitted, the scanner checks a list of common ports.
-
-### `-t`, `--timeout`
-
-Set the connection timeout in seconds. The default is `0.75` seconds.
-
-```bash
-python3 portscan.py example.com --ports 80,443 --timeout 1
-```
-
-A lower value makes scans faster on responsive networks. A higher value can
-help when the target or network is slow.
-
-### `-w`, `--workers`
-
-Set the number of simultaneous port checks. The default is `64`.
-
-```bash
-python3 portscan.py 192.168.1.1 --ports 1-1024 --workers 100
-```
-
-### `--show-closed`
-
-Show ports that did not accept a connection, including refused and timed-out
-connections.
-
-```bash
-python3 portscan.py 127.0.0.1 --ports 20-25 --show-closed
-```
-
-Without this option, only open ports are listed.
-
-## Complete examples
-
-Scan common ports on a local computer:
-
-```bash
-python3 portscan.py localhost
-```
-
-Scan web ports on Windows PowerShell:
-
-```powershell
-python .\portscan.py example.com --ports 80,443,8080
-```
-
-Scan the first 1024 ports and show every result in Windows CMD:
-
-```bat
-python portscan.py 192.168.1.1 --ports 1-1024 --show-closed
-```
-
-## Understanding the output
-
+### 4. Reading Targets from a File (`-iL`)
+Create a file, e.g., `targets.txt`:
 ```text
-PORT    STATE     SERVICE         DETAIL
-----------------------------------------------------------
-22      open      ssh             0.5 ms
-80      closed    http            0.3 ms (refused)
+# Internal servers
+192.168.1.1
+192.168.1.100
+# External web servers
+example.com
 ```
 
-- `PORT`: TCP port number.
-- `STATE`: `open` means a TCP connection was accepted. `closed` means the
-  connection was not accepted.
-- `SERVICE`: common service name when known on the local system.
-- `DETAIL`: connection time and, for closed ports, the failure reason.
+Scan all targets in the file:
+```bash
+python portscan.py -iL targets.txt -p 80,443,8080
+```
 
-## Common problems
+---
 
-### Python is not recognized
+## Selecting Ports (`-p`, `--ports`)
 
-Install Python 3, then try `python`, `python3`, or `py` depending on your
-operating system and installation.
+If omitted, the scanner checks a default list of 22 standard services (SSH, HTTP, HTTPS, MySQL, RDP, etc.).
 
-### Host could not be resolved
+### Comma-separated list:
+```bash
+python portscan.py example.com -p 21,22,80,443,3306,8080
+```
 
-Check the hostname or IP address and confirm that DNS or the network is
-available.
+### Port ranges:
+```bash
+python portscan.py example.com -p 1-1024
+```
 
-### Permission or firewall errors
+### Combined syntax:
+```bash
+python portscan.py example.com -p 22,80,443,8000-8080
+```
 
-A firewall may block connections or make ports appear to time out. Scan only
-systems you own or have explicit permission to test.
+---
+
+## Service Banner Grabbing (`-b`, `--banner`)
+
+Add the `-b` or `--banner` flag to interrogate open ports and detect service versions:
+
+```bash
+python portscan.py 192.168.1.1 -p 21,22,80,443 --banner
+```
+
+Example output with banner grabbing:
+```text
+PORT    STATE     SERVICE       BANNER                      DETAIL
+-------------------------------------------------------------------------
+22      open      ssh           SSH-2.0-OpenSSH_8.9p1       0.8 ms
+80      open      http          Server: nginx/1.18.0        1.2 ms
+```
+
+---
+
+## Exporting Results (`-o`, `-f`)
+
+### Export to JSON:
+```bash
+python portscan.py example.com -p 80,443 --banner -o results.json
+```
+
+Example `results.json`:
+```json
+[
+  {
+    "host": "example.com",
+    "ip": "93.184.216.34",
+    "port": 80,
+    "state": "open",
+    "service": "http",
+    "banner": "Server: ECS (dcb/7F3E)",
+    "elapsed_ms": 14.2,
+    "reason": "connected"
+  }
+]
+```
+
+### Export to CSV:
+```bash
+python portscan.py 192.168.1.0/24 -p 22,80,443 -o results.csv
+```
+
+---
+
+## Performance & Concurrency Tuning
+
+### Timeout (`-t`, `--timeout`)
+Connection timeout per port in seconds (default: `0.75`).
+* For local / high-speed LAN networks: `-t 0.2`
+* For high-latency or remote connections: `-t 1.5`
+
+```bash
+python portscan.py 192.168.1.1 -t 0.3
+```
+
+### Parallel Workers (`-w`, `--workers`)
+Number of concurrent threads (default: `64`).
+```bash
+python portscan.py example.com -p 1-10000 -w 150
+```
+
+---
+
+## Colors and Terminal Customization
+
+Terminal output uses ANSI colors by default. To disable color highlighting (e.g. for piping or clean logs):
+
+```bash
+python portscan.py 127.0.0.1 --no-color
+```
+Or set the environment variable `NO_COLOR=1`.

@@ -1,0 +1,8 @@
+# Simple Port Scanner is built using Python's Standard Library.
+# No third-party packages are required to run portscan.py.
+
+# Optional development, testing, and linting tools:
+pytest>=7.0.0
+flake8>=6.0.0
+ruff>=0.1.0
+black>=23.0.0
